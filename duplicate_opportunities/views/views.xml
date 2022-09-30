@@ -6,7 +6,7 @@
         <field name="inherit_id" ref="studio_customization.odoo_studio_crm_lead_95a80fd9-69cf-483d-b55c-902a70381783"/>
         <field name="arch" type="xml">
             <xpath expr="//page[@name='studio_page_juYfU']" position="after">
-                <page string="Sales Persons" name="sales_persons">
+                <page string="Sales Persons" name="sales_persons" force_save="True" attrs="{}" readonly="1" >
                     <field name="SalesPersonList" string="Past Assinees "   />
                 </page>
             </xpath>
