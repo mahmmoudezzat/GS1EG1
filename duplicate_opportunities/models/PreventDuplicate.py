@@ -23,8 +23,8 @@ class neww(models.Model):
                             _("Invalid mobile Number: Please provide a mobile number that has 10 to 15 characters."))
                     else:
                         Opportunities = self.sudo().env['crm.lead'].search(
-                            ["&", ['id', '!=', self.id], "|", ["mobile", "=", formated_phone],
-                             ["mobile_2", "=", formated_phone]], limit=1)
+                            ["&", ['id', '!=', self.id], "|", [formated_phone, "ilike","mobile" ],
+                             [formated_phone, "ilike","mobile_2" ]], limit=1)
                         if Opportunities.ids != []:
                             raise UserError(
                                 _("Mobile number already exists {} .".format(vals['mobile'])))
@@ -38,8 +38,8 @@ class neww(models.Model):
                             _("Invalid mobile Number: Please provide a mobile number that has 10 to 15 characters."))
                     else:
                         Opportunities = self.sudo().env['crm.lead'].search(
-                            ["&", ['id', '!=', self.id], "|", ["mobile", "=", formated_phone2],
-                             ["mobile_2", "=", formated_phone2]], limit=1)
+                            ["&", ['id', '!=', self.id], "|", [formated_phone, "ilike","mobile" ],
+                             [formated_phone, "ilike","mobile_2" ]], limit=1)
                         if Opportunities.ids != []:
                             raise UserError(
                                 _("Mobile number already exists {} .".format(vals['mobile_2'])))
