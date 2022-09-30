@@ -114,7 +114,7 @@ class neww(models.Model):
                     if vals['mobile_2']:
                         ActiveOpportunity = self.sudo().env['crm.lead'].search(
                             ["&", "&", ["active", "=", True], ["stage_id.is_won", "=", False], "|", "|", "|", "|",
-                             ["mobile", "=", vals['mobile']], ["mobile", "=", vals['mobile_2']],
+                             [vals['mobile'], "ilike", "mobile"], ["mobile", "=", vals['mobile_2']],
                              ["mobile_2", "=", vals['mobile']], ["mobile_2", "=", vals['mobile_2']],
                              ["email_from", "=", vals['email_from']]], limit=1)
                         InactiveOpportunity = self.sudo().env['crm.lead'].search(
@@ -128,8 +128,7 @@ class neww(models.Model):
                     else:
                         ActiveOpportunity = self.sudo().env['crm.lead'].search(
                             ["&", "&", ["active", "=", True], ["stage_id.is_won", "=", False], "|", "|",
-                             ["mobile", "=", vals['mobile']], ["mobile_2", "=", vals['mobile']],
-                             ["email_from", "=", vals['email_from']]], limit=1)
+                             ["mobile", "=", vals['mobile']], ["mobile_2", "=", vals['mobile']]], limit=1)
                         InactiveOpportunity = self.sudo().env['crm.lead'].search(
                             ["|", "&", ["active", "=", False], "|", "|", ["mobile", "=", vals['mobile']],
                              ["mobile_2", "=", vals['mobile']], ["email_from", "=", vals['email_from']], "&", "&",
