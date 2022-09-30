@@ -3,7 +3,7 @@
        <record id="view_order_form_active" model="ir.ui.view">
         <field name="name">sale.order.active</field>
         <field name="model">crm.lead</field>
-        <field name="inherit_id" ref="crm.crm_lead_view_form"/>
+        <field name="inherit_id" ref="crm.studio_customization.odoo_studio_crm_lead_95a80fd9-69cf-483d-b55c-902a70381783"/>
         <field name="arch" type="xml">
             <xpath expr="//page[@name='studio_page_juYfU']" position="after">
             <page string="Sales Persons" name="sales_persons">
