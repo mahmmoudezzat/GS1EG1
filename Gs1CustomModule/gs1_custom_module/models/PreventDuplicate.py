@@ -68,6 +68,7 @@ class neww(models.Model):
         return super(neww, self.sudo()).write(vals)
     @api.model
     def create(self, vals):
+        uploader = self.sudo().env.context.get('import_file') and self.sudo().env.context.get('tracking_disable')
         if vals['mobile'] and vals['name']:
             phone_number = vals['mobile']
             vals['mobile'] = self.sudo().Phone_Format(phone_number)
@@ -75,7 +76,7 @@ class neww(models.Model):
             if vals['mobile_2']:
                 phone_number2 = vals['mobile_2']
                 vals['mobile_2'] = self.sudo().Phone_Format(phone_number2)
-                unique_domain= ["&", "|",("active", "=", True),("active", "=", False),"|", "|", "|",["mobile", "=", vals['mobile']], ["mobile", "=", vals['mobile_2']],["mobile_2", "=", vals['mobile']], ["mobile_2", "=",                                         vals['mobile_2']]]
+                unique_domain= ["&", "|",("active", "=", True),("active", "=", False),"|", "|", "|",["mobile", "=", vals['mobile']], ["mobile", "=", vals['mobile_2']],["mobile_2", "=", vals['mobile']], ["mobile_2", "=",vals['mobile_2']]]
             if vals['email_from']:
                 emailstip = str(vals['email_from'])
                 emailstip = emailstip.rstrip()
@@ -86,33 +87,51 @@ class neww(models.Model):
                 else:
                    unique_domain= ["&", "|",("active", "=", True),("active", "=", False),"|","|",["mobile", "=", vals['mobile']],["mobile_2", "=", vals['mobile']],["email_from", "=", vals['email_from']]]
             ExistingOpportunity = self.sudo().env['crm.lead'].search(unique_domain, limit=1)
-            uploader = self.sudo().env.context.get('import_file') and self.sudo().env.context.get('tracking_disable')
             message_text = ""
             if vals['email_from']:
              if not self.check(emailstip):
                 if uploader:
-                    message_text = f'<strong>Error In Import</strong>' \
+                  message_text = f'<strong>Error In Import</strong>' \
                                     'Opportunity {} has invaild email !'.format(vals['name'])
+                  RandomOpportunity = self.sudo().env['crm.lead'].search(["&", "|", ["active", "=", True], ["active", "=", False],["user_id.name", "=", self.sudo().env.user.name]], limit=1)
+                  if RandomOpportunity.ids == []:
+                    RandomOpportunity = self.sudo().env['crm.lead'].search(
+                    ["|", ["active", "=", True], ["active", "=", False]], limit=1)
+                  RandomOpportunity.sudo().send_message_(message_text)
+                  return RandomOpportunity
                 else:
                     raise UserError(_("Invalid Email."))
             if len(vals['mobile']) < 9 or len(vals['mobile']) > 15:
                 if uploader:
-                    message_text = f'<strong>[Opportunity mobile Validation]</strong>' \
+                  message_text = f'<strong>[Opportunity mobile Validation]</strong>' \
                                     'Can not create opportunity {} Because it has an invalid mobile Number {} Please provide a mobile number that has 10 to 15 characters.'.format(
-                        vals['name'], vals['mobile'])
+                        vals['name'], vals['mobile'])  
+                  RandomOpportunity = self.sudo().env['crm.lead'].search(["&", "|", ["active", "=", True], ["active", "=", False],["user_id.name", "=", self.sudo().env.user.name]], limit=1)
+                  if RandomOpportunity.ids == []:
+                    RandomOpportunity = self.sudo().env['crm.lead'].search(
+                    ["|", ["active", "=", True], ["active", "=", False]], limit=1)
+                  RandomOpportunity.sudo().send_message_(message_text)
+                  return RandomOpportunity
+                    
                 else:
                     raise UserError(
                         _("Invalid mobile Number: Mobile number should be between 10 and 15 characters long."))
-            elif vals['mobile_2']: 
+            if vals['mobile_2']: 
                if len(vals['mobile_2']) < 9 or len(vals['mobile_2']) > 15 and vals['mobile2']:
                 if uploader:
-                    message_text = f'<strong>[Opportunity mobile Validation]</strong>' \
+                  message_text = f'<strong>[Opportunity mobile Validation]</strong>' \
                                     'Can not create opportunity {} Because it has an invalid second mobile Number {} Please provide a mobile number that has 10 to 15 characters.'.format(
                         vals['name'], vals['mobile_2'])
+                  RandomOpportunity = self.sudo().env['crm.lead'].search(["&", "|", ["active", "=", True], ["active", "=", False],["user_id.name", "=", self.sudo().env.user.name]], limit=1)
+                  if RandomOpportunity.ids == []:
+                    RandomOpportunity = self.sudo().env['crm.lead'].search(
+                    ["|", ["active", "=", True], ["active", "=", False]], limit=1)
+                  RandomOpportunity.sudo().send_message_(message_text)
+                  return RandomOpportunity
                 else:
                     raise UserError(
                         _("Invalid mobile Number: The second mobile number  should be between 10 and 15 characters long."))
-            elif ExistingOpportunity.sudo() != []:
+            if ExistingOpportunity.sudo().ids != []:
                 if ExistingOpportunity.sudo().active and  str(ExistingOpportunity.sudo().stage_id.is_won)=="False" :
                     if uploader:
                         message_text = f'<strong>[Duplicate Opportunity Validation]</strong>' \
@@ -156,6 +175,14 @@ class neww(models.Model):
             if uploader:
                 message_text = f'<strong>Error In Import</strong>' \
                     'Opportunity name and mobile are required !'
+                RandomOpportunity = self.sudo().env['crm.lead'].search(
+                ["&", "|", ["active", "=", True], ["active", "=", False],
+                    ["user_id.name", "=", self.sudo().env.user.name]], limit=1)
+                if RandomOpportunity.ids == []:
+                    RandomOpportunity = self.sudo().env['crm.lead'].search(
+                    ["|", ["active", "=", True], ["active", "=", False]], limit=1)
+                RandomOpportunity.sudo().send_message_(message_text)
+                return RandomOpportunity
             else:
                 raise UserError(_("Opportunity name and mobile are required !"))
 
@@ -168,6 +195,7 @@ class neww(models.Model):
                     ["|", ["active", "=", True], ["active", "=", False]], limit=1)
             RandomOpportunity.sudo().send_message_(message_text)
             return RandomOpportunity
+
     def send_message_(self, message_text):
         odoobot_id = self.sudo().env['ir.model.data'].sudo()._xmlid_to_res_id("base.partner_root")
 
