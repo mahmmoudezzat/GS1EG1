@@ -8,8 +8,9 @@ class one_Excute_phone(models.Model):
  def one_excute(self):
      all_opportunity=self.sudo().env['crm.lead'].search(['&',"|",["active","=",True],["active","=",False],["mobile","!=",False]])
      for x in  all_opportunity:
-        old_phone_number=x.mobile      
-        new_number = self.sudo().Phone_Format(old_phone_number)
+        old_phone_number=x.mobile    
+        if len(old_phone_number) > 8: 
+            new_number = self.sudo().Phone_Format(old_phone_number)
         x.sudo().write({'mobile':new_number,'x_studio_orignal_mobile':old_phone_number})
  def Phone_Format(self, phone_number):
             x = str(re.sub('[^0-9]+', '', phone_number))
