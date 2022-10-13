@@ -2,8 +2,6 @@ from email import message
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError
 import re
-
-
 class neww(models.Model):
     _inherit = 'crm.lead'
     mobile_2 = fields.Char(string='Mobile 2')
@@ -14,6 +12,10 @@ class neww(models.Model):
     def write(self, vals):
         if self.sudo().env.context.get("module") and str(self.env.context.get("bin_size")) == "False":
             return super(neww, self.sudo()).write(vals)
+        if len(self.user_id.ids)>1:
+          return super(neww, self.sudo()).write(vals)
+        elif len(self.source_id.ids)>1:
+          return super(neww, self.sudo()).write(vals)
         if not self.sudo().env.context.get('active_ids'):
             for x in vals:
                 if x == 'mobile':
@@ -67,36 +69,33 @@ class neww(models.Model):
     @api.model
     def create(self, vals):
         if vals['mobile'] and vals['name']:
-
             phone_number = vals['mobile']
             vals['mobile'] = self.sudo().Phone_Format(phone_number)
-            unique_domain = ["|","|",("active", "=", False),("active", "=", True),("mobile", "=", vals['mobile'])]
-
+            unique_domain = ["&","|",("active", "=", True),("active", "=", False),"|",("mobile", "=", vals['mobile']),("mobile_2", "=", vals['mobile'])]
             if vals['mobile_2']:
                 phone_number2 = vals['mobile_2']
                 vals['mobile_2'] = self.sudo().Phone_Format(phone_number2)
-                unique_domain = ["|","|","|"] + unique_domain + [("mobile", "=", vals['mobile_2']),("mobile_2", "=", vals['mobile']), ("mobile_2", "=", vals['mobile_2'])]
-
+                unique_domain= ["&", "|",("active", "=", True),("active", "=", False),"|", "|", "|",["mobile", "=", vals['mobile']], ["mobile", "=", vals['mobile_2']],["mobile_2", "=", vals['mobile']], ["mobile_2", "=",                                         vals['mobile_2']]]
             if vals['email_from']:
                 emailstip = str(vals['email_from'])
                 emailstip = emailstip.rstrip()
                 emailstip = emailstip.lstrip()
                 vals['email_from'] = emailstip
-                unique_domain = ["|"] + unique_domain + [("email_from", "=", vals['email_from'])]
-
+                if vals['mobile_2']:
+                   unique_domain= ["&", "|",("active", "=", True),("active", "=", False),"|", "|", "|","|",["mobile", "=", vals['mobile']], ["mobile", "=", vals['mobile_2']],["mobile_2", "=", vals['mobile']], ["mobile_2", "=",                                         vals['mobile_2']],["email_from", "=", vals['email_from']]]
+                else:
+                   unique_domain= ["&", "|",("active", "=", True),("active", "=", False),"|","|",["mobile", "=", vals['mobile']],["mobile_2", "=", vals['mobile']],["email_from", "=", vals['email_from']]]
             ExistingOpportunity = self.sudo().env['crm.lead'].search(unique_domain, limit=1)
-
             uploader = self.sudo().env.context.get('import_file') and self.sudo().env.context.get('tracking_disable')
-            
             message_text = ""
-            if not self.check(emailstip):
+            if vals['email_from']:
+             if not self.check(emailstip):
                 if uploader:
                     message_text = f'<strong>Error In Import</strong>' \
                                     'Opportunity {} has invaild email !'.format(vals['name'])
                 else:
                     raise UserError(_("Invalid Email."))
-
-            elif len(vals['mobile']) < 9 or len(vals['mobile']) > 15:
+            if len(vals['mobile']) < 9 or len(vals['mobile']) > 15:
                 if uploader:
                     message_text = f'<strong>[Opportunity mobile Validation]</strong>' \
                                     'Can not create opportunity {} Because it has an invalid mobile Number {} Please provide a mobile number that has 10 to 15 characters.'.format(
@@ -104,8 +103,8 @@ class neww(models.Model):
                 else:
                     raise UserError(
                         _("Invalid mobile Number: Mobile number should be between 10 and 15 characters long."))
-
-            elif len(vals['mobile_2']) < 9 or len(vals['mobile_2']) > 15:
+            elif vals['mobile_2']: 
+               if len(vals['mobile_2']) < 9 or len(vals['mobile_2']) > 15 and vals['mobile2']:
                 if uploader:
                     message_text = f'<strong>[Opportunity mobile Validation]</strong>' \
                                     'Can not create opportunity {} Because it has an invalid second mobile Number {} Please provide a mobile number that has 10 to 15 characters.'.format(
@@ -113,30 +112,18 @@ class neww(models.Model):
                 else:
                     raise UserError(
                         _("Invalid mobile Number: The second mobile number  should be between 10 and 15 characters long."))
-            elif ExistingOpportunity != []:
-                if ExistingOpportunity.active:
+            elif ExistingOpportunity.sudo() != []:
+                if ExistingOpportunity.sudo().active and  str(ExistingOpportunity.sudo().stage_id.is_won)=="False" :
                     if uploader:
                         message_text = f'<strong>[Duplicate Opportunity Validation]</strong>' \
-                                        'Can not create opportunity ({}) because a similar opportunity ({}) already exists and its ID is ({}). Please close it to be able to open a new one.'.format(
-                            vals['name'], ExistingOpportunity.name, ExistingOpportunity.id)
+                                        'Can not create opportunity ({}) because a similar opportunity ({}) already exists and its ID is ({}). Please close it to be able to open a new one.'.format(vals['name'], ExistingOpportunity.sudo().name, ExistingOpportunity.sudo().id)
                     else:
                         raise UserError((
                             'Can not create opportunity ({}) because a similar opportunity ({}) already exists and its ID is ({}). Please close it to be able to open a new one.'.format(
                                 vals['name'], ExistingOpportunity.sudo().name, ExistingOpportunity.sudo().id)))
-
                 else: 
-                    SalesPersonUserId = self.env['crm.team.member'].search(
-                        ["&", ["user_id.name", '=', self.env.user.name], ["crm_team_id.name", '!=', "Team Contracts"]],
-                        limit=1)
-                    if str(SalesPersonUserId.id) != "False":
-                        ExistingOpportunity.sudo().write(
-                            {'name': vals['name'], 'stage_id': 1, 'probability': 30,
-                                'user_id': self.env.user})
-                    else:
-                        ExistingOpportunity.sudo().write(
-                            {'name': vals['name'], 'stage_id': 1, 'probability': 30, 'team_id': False,
-                                'user_id': False})
-
+                    SalesPersonUserId = self.sudo().env['crm.team.member'].search(
+                        ["&",["user_id.name", '=', self.sudo().env.user.name],"|",["crm_team_id.name", 'ilike', "Team AA"],["crm_team_id.name", 'ilike', "Team SF"]],limit=1)
                     if ExistingOpportunity.sudo().stage_id.is_won:
                         ExistingOpportunity.sudo().message_post(
                             body="An existing opportunity ({}) whose ID is ({}) was a Closed Won but has been reopened .".format(
@@ -144,24 +131,27 @@ class neww(models.Model):
                         message_text2 = f'<strong>[Duplicate Opportunity Validation]</strong>' \
                                         'An existing opportunity ({}) whose ID is ({}) was a Closed Won but has been reopened .'.format(
                             ExistingOpportunity.sudo().name, ExistingOpportunity.sudo().id)
+                        ExistingOpportunity.sudo().write({'stage_id': 1, 'probability': 30})
                     else:
-                        ExistingOpportunity.sudo().toggle_active()
                         ExistingOpportunity.sudo().message_post(
-                            body="An existing opportunity ({}) whose ID is ({}) was a Closed Lost but has been reopened .".format(
-                                ExistingOpportunity.name, ExistingOpportunity.id))
-
+                            body="An existing opportunity ({}) whose ID is ({}) was a Closed Lost but has been reopened.".format(
+                                ExistingOpportunity.sudo().name, ExistingOpportunity.sudo().id))
+                        ExistingOpportunity.sudo().toggle_active()
                         message_text2 = f'<strong>[Duplicate Opportunity Validation]</strong>' \
                                             'An existing opportunity ({}) whose ID is ({}) was a Closed Lost but has been reopened .'.format(
-                                ExistingOpportunity.name, ExistingOpportunity.id)
-
+                                ExistingOpportunity.sudo().name, ExistingOpportunity.sudo().id)
                     if message_text2 != "":
+                        if str(SalesPersonUserId.id) != "False":
+                                 ExistingOpportunity.sudo().write({'user_id': self.sudo().env.user.id})
+                        else:
+                                ExistingOpportunity.sudo().write({'team_id': False,'user_id': False})
+                        if uploader:
+                            RandomOpportunity = self.sudo().env['crm.lead'].search(["|", ["active", "=", True], ["active", "=", False]], limit=1)
                         ExistingOpportunity.sudo().send_message_(message_text2)
-                        return ExistingOpportunity
-
+                        return ExistingOpportunity.sudo()
             else:
                 currnet_opportunity = super(neww, self.sudo()).create(vals)
                 return currnet_opportunity
-        
         else:
             if uploader:
                 message_text = f'<strong>Error In Import</strong>' \
@@ -178,25 +168,23 @@ class neww(models.Model):
                     ["|", ["active", "=", True], ["active", "=", False]], limit=1)
             RandomOpportunity.sudo().send_message_(message_text)
             return RandomOpportunity
-
-
     def send_message_(self, message_text):
-        odoobot_id = self.env['ir.model.data'].sudo()._xmlid_to_res_id("base.partner_root")
+        odoobot_id = self.sudo().env['ir.model.data'].sudo()._xmlid_to_res_id("base.partner_root")
 
         # find if a channel was opened for this user before
-        channel = self.env['mail.channel'].sudo().search([
-            ('name', '=', self.env.user.name),
-            ('channel_partner_ids', 'in', [self.env.user.partner_id.id])
+        channel = self.sudo().env['mail.channel'].sudo().search([
+            ('name', '=', self.sudo().env.user.name),
+            ('channel_partner_ids', 'in', [self.sudo().env.user.partner_id.id])
         ],
             limit=1,
         )
         if not channel:
             # create a new channel
-            channel = self.env['mail.channel'].with_context(mail_create_nosubscribe=True).sudo().create({
-                'channel_partner_ids': [(4, self.env.user.partner_id.id), (4, odoobot_id)],
+            channel = self.sudo().env['mail.channel'].with_context(mail_create_nosubscribe=True).sudo().create({
+                'channel_partner_ids': [(4, self.sudo().env.user.partner_id.id), (4, odoobot_id)],
                 'public': 'private',
                 'channel_type': 'chat',
-                'name': self.env.user.name,
+                'name': self.sudo().env.user.name,
                 'display_name': f'Picking Validated', })
         # send a message to the related user
         channel.sudo().message_post(
@@ -211,7 +199,6 @@ class neww(models.Model):
             clean_phone_number = x
             return clean_phone_number
         else:
-
             index = phone_number.find('/')
             if index != -1 and index != 0 and index != 1:
                 phone_number = phone_number[:index + 1]
